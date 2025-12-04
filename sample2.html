@@ -1,54 +1,226 @@
-<!-- <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-  </head>
-  <body>
-    <h1>Geolocation</h1>
-
-    <button onclick="getLocation()">get my location</button>
-
-    <p id="loc"></p>
-
-    <script>
-      function getLocation() {
-        if (!navigator.geolocation) {
-          document.getElementById("loc").innerHTML =
-            "Geoloaction not supported";
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(showPosition, showError);
-      }
-      function showPosition(pos) {
-        const { latitude, longitude } = pos.coords;
-        document.getElementById(
-          "loc"
-        ).innerText = `latitude : ${latitude} longitude : ${longitude}`;
-      }
-      function showError(err) {
-        document.getElementById("loc").innerText = `Error : ${err.message}`;
-      }
-    </script>
-  </body>
-</html> -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MyFlix — Simple Netflix-like</title>
+  <link rel="stylesheet" href="./STYLE.CSS">
+  <style>
+    :root{
+      --bg:#060606; --panel:#111; --muted:#9aa0a6; --accent:#e50914;
+      --card-w:180px; --card-h:260px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:#fff}
+    /* Topbar */
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:linear-gradient(180deg,rgba(0,0,0,0.85),transparent);position:sticky;top:0;z-index:40}
+    .logo{font-weight:800;color:var(--accent);letter-spacing:1px;text-decoration:none}
+    .navlinks a{color:#ddd;margin-left:16px;text-decoration:none;font-size:14px}
+    /* Hero */
+    .hero{height:58vh;background-image:url('https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=1600&q=60');background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:36px}
+    .hero .info{max-width:720px}
+    .hero h1{margin:0 0 8px;font-size:38px}
+    .hero p{margin:0;color:var(--muted);max-width:540px}
+    .controls{margin-top:12px}
+    .btn{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:6px;font-weight:600;cursor:pointer;margin-right:8px}
+    .btn-ghost{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:#fff;padding:10px 14px;border-radius:6px;cursor:pointer}
+    /* Content */
+    .container{padding:20px}
+    h2{margin:8px 0 12px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--card-w),1fr));gap:12px}
+    .card{width:var(--card-w);height:var(--card-h);background:var(--panel);border-radius:8px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s}
+    .card img{width:100%;height:100%;object-fit:cover;display:block}
+    .card:hover{transform:scale(1.06);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+    .card-meta{padding:8px;font-size:13px;color:var(--muted)}
+    /* Modal player */
+    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:60;padding:20px;opacity:0;pointer-events:none;transition:opacity .15s}
+    .modal.open{opacity:1;pointer-events:auto}
+    .player-wrap{width:100%;max-width:980px;background:#000;border-radius:10px;overflow:hidden}
+    .player-wrap video{width:100%;height:auto;display:block;background:#000}
+    .modal-close{position:absolute;right:26px;top:22px;background:transparent;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:6px 10px;border-radius:6px;cursor:pointer}
+    /* Watchlist badge */
+    .wl-btn{position:absolute;right:8px;top:8px;background:rgba(0,0,0,0.45);border:none;color:#fff;padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer}
+    /* Responsive */
+    @media (max-width:720px){
+      .hero{height:40vh;padding:20px}
+      .hero h1{font-size:24px}
+      :root{--card-w:140px;--card-h:200px}
+    }
+    /* small footer */
+    .footer{padding:18px;text-align:center;color:var(--muted);font-size:13px}
+  </style>
 </head>
 <body>
 
-  <script>
-    fetch("https://avatars.githubusercontent.com/u/234129079?v=4")
-  .then(res => res.json())
-  .then(data => console.log(data))
-  .catch(err => console.error(err));
+  <header class="topbar">
+    <a class="logo" href="#">MyFlix</a>
+    <nav class="navlinks">
+      <a href="#">Home</a>
+      <a href="#">Movies</a>
+      <a href="#">TV Shows</a>
+    </nav>
+  </header>
 
+  <section class="hero">
+    <div class="info">
+      <h1>Demo Movie Title</h1>
+      <p>Short demo description. Click Play on any movie below to open the player. This is a minimal, educational Netflix-like UI.</p>
+      <div class="controls">
+        <button class="btn" id="heroPlay">▶ Play</button>
+        <button class="btn-ghost" id="heroMore">More info</button>
+      </div>
+    </div>
+  </section>
+
+  <main class="container">
+    <h2>Recommended for you</h2>
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <!-- Player modal -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <button id="closeBtn" class="modal-close">Close ✕</button>
+    <div class="player-wrap" role="dialog" aria-modal="true">
+      <video id="player" controls playsinline poster="" src=""></video>
+    </div>
+  </div>
+
+  <div class="footer">Simple demo — videos are public sample files. Built with HTML/CSS/JS.</div>
+
+  <script>
+    /***** Simple movie data *****/
+    const movies = [
+      {
+        id: '1',
+        title: 'Big Buck Bunny',
+        year: 2008,
+        duration: '10m',
+        thumbnail: 'https://peach.blender.org/wp-content/uploads/title_anouncement.jpg?x11217',
+        video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+      },
+      {
+        id: '2',
+        title: 'Sintel (short)',
+        year: 2010,
+        duration: '14m',
+        thumbnail: 'https://media.xiph.org/sintel/sintel-2010-poster.jpg',
+        video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4'
+      },
+      {
+        id: '3',
+        title: 'For Bigger Blazes',
+        year: 2014,
+        duration: '1m',
+        thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg',
+        video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+      },
+      {
+        id: '4',
+        title: 'Tears of Steel',
+        year: 2012,
+        duration: '12m',
+        thumbnail: 'https://mango.blender.org/wp-content/uploads/2012/09/tears_of_steel_poster.jpg',
+        video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
+      },
+      {
+        id: '5',
+        title: 'Elephants Dream',
+        year: 2006,
+        duration: '10m',
+        thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Elephants_Dream_s1_proog.jpg/800px-Elephants_Dream_s1_proog.jpg',
+        video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4'
+      }
+    ];
+
+    const grid = document.getElementById('grid');
+    const modal = document.getElementById('modal');
+    const player = document.getElementById('player');
+    const closeBtn = document.getElementById('closeBtn');
+
+    // Watchlist logic using localStorage
+    function getWatchlist(){
+      try{ return JSON.parse(localStorage.getItem('myflix_watchlist') || '[]') } catch(e){ return [] }
+    }
+    function saveWatchlist(list){ localStorage.setItem('myflix_watchlist', JSON.stringify(list)) }
+
+    function isInWatchlist(id){ return getWatchlist().includes(id) }
+
+    // Build cards
+    function renderGrid(){
+      grid.innerHTML = '';
+      const list = movies;
+      list.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+          <img loading="lazy" src="${m.thumbnail}" alt="${escapeHtml(m.title)}">
+          <button class="wl-btn" data-id="${m.id}">${ isInWatchlist(m.id) ? '✓ Saved' : '+ Watch' }</button>
+          <div style="padding:8px;color:var(--muted);font-size:13px">
+            <strong style="display:block;color:#fff">${escapeHtml(m.title)}</strong>
+            <div style="margin-top:6px">${m.year} • ${m.duration}</div>
+          </div>
+        `;
+        // click to play when clicking card (but not the watchlist button)
+        div.addEventListener('click', e => {
+          if (e.target.matches('.wl-btn')) return;
+          openPlayer(m);
+        });
+        // watchlist button
+        div.querySelector('.wl-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          const id = e.currentTarget.dataset.id;
+          toggleWatchlist(id);
+          renderGrid();
+        });
+        grid.appendChild(div);
+      });
+    }
+
+    function toggleWatchlist(id){
+      const list = getWatchlist();
+      const idx = list.indexOf(id);
+      if (idx === -1) list.push(id);
+      else list.splice(idx,1);
+      saveWatchlist(list);
+    }
+
+    // Player open/close
+    function openPlayer(movie){
+      player.pause();
+      player.src = movie.video;
+      player.poster = movie.thumbnail || '';
+      player.currentTime = 0;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden','false');
+      // small delay then play (some browsers require user interaction)
+      setTimeout(()=>player.play().catch(()=>{}),150);
+    }
+    function closePlayer(){
+      player.pause();
+      player.src = '';
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden','true');
+    }
+
+    // Hero play uses first movie
+    document.getElementById('heroPlay').addEventListener('click', ()=> openPlayer(movies[0]));
+    closeBtn.addEventListener('click', closePlayer);
+    modal.addEventListener('click', e => { if (e.target === modal) closePlayer(); });
+
+    // Escape key to close
+    window.addEventListener('keydown', e => { if(e.key === 'Escape') closePlayer(); });
+
+    // Simple HTML escape
+    function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+    // Init
+    renderGrid();
+
+    // Accessibility / mobile improvement: pause video on page visibility change
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) player.pause();
+    });
   </script>
-  
+
 </body>
 </html>
